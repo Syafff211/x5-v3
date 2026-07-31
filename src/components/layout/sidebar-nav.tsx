@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { usePathname, useRouter } from 'next/navigation'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import {
   ChevronLeft,
   LogOut,
@@ -51,6 +51,9 @@ export function SidebarNav({ items, variant, title, subtitle }: SidebarNavProps)
     if (saved === '1') setCollapsed(true)
   }, [])
 
+  // Tutup drawer setiap kali route berubah. Dijalankan juga saat komponen
+  // di-render ulang oleh navigasi, sebagai pengaman kalau animasi keluar
+  // sempat tersendat.
   useEffect(() => {
     setMobileOpen(false)
   }, [pathname])
@@ -241,40 +244,43 @@ export function SidebarNav({ items, variant, title, subtitle }: SidebarNavProps)
       </div>
 
       {/* ---------- MOBILE DRAWER ---------- */}
-      <AnimatePresence>
-        {mobileOpen && (
-          <>
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+      {/*
+        Tidak memakai AnimatePresence.
+
+        AnimatePresence menahan elemen di DOM selama animasi keluar. Kalau
+        navigasi terjadi saat drawer menutup, unmount-nya bisa tidak pernah
+        selesai — overlay tertinggal dengan opacity 0 tapi masih menangkap
+        semua klik, sehingga halaman terasa "mati setelah sekali klik".
+
+        Render kondisional biasa + animasi CSS: begitu `mobileOpen` false,
+        elemen benar-benar hilang dari DOM pada render itu juga.
+      */}
+      {mobileOpen && (
+        <div className="lg:hidden">
+          <div
+            onClick={() => setMobileOpen(false)}
+            className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm animate-in fade-in duration-200"
+            aria-hidden
+          />
+          <aside
+            className="fixed inset-y-0 left-0 z-[71] flex w-[280px] flex-col border-r border-border bg-card shadow-2xl animate-in slide-in-from-left duration-300"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Menu navigasi"
+          >
+            <Button
+              variant="ghost"
+              size="icon-sm"
               onClick={() => setMobileOpen(false)}
-              className="fixed inset-0 z-[70] bg-black/60 backdrop-blur-sm lg:hidden"
-              aria-hidden
-            />
-            <motion.aside
-              initial={{ x: '-100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '-100%' }}
-              transition={{ type: 'spring', damping: 26, stiffness: 240 }}
-              className="fixed inset-y-0 left-0 z-[71] flex w-[280px] flex-col border-r border-border bg-card shadow-2xl lg:hidden"
-              role="dialog"
-              aria-label="Menu navigasi"
+              aria-label="Tutup menu"
+              className="absolute right-2 top-3.5 z-10"
             >
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                onClick={() => setMobileOpen(false)}
-                aria-label="Tutup menu"
-                className="absolute right-2 top-3.5 z-10"
-              >
-                <X className="h-4 w-4" />
-              </Button>
-              <SidebarBody compact={false} />
-            </motion.aside>
-          </>
-        )}
-      </AnimatePresence>
+              <X className="h-4 w-4" />
+            </Button>
+            <SidebarBody compact={false} />
+          </aside>
+        </div>
+      )}
 
       {/* ---------- DESKTOP SIDEBAR ---------- */}
       <aside
