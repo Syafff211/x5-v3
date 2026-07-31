@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" width="1200" height="630">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#0a0a0f"/>
+      <stop offset="50%" stop-color="#1a1033"/>
+      <stop offset="100%" stop-color="#0a0a0f"/>
+    </linearGradient>
+    <linearGradient id="txt" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#818cf8"/>
+      <stop offset="50%" stop-color="#a78bfa"/>
+      <stop offset="100%" stop-color="#e879f9"/>
+    </linearGradient>
+    <linearGradient id="badge" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#6366f1"/>
+      <stop offset="100%" stop-color="#d946ef"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <circle cx="120" cy="90" r="220" fill="#6366f1" opacity="0.18"/>
+  <circle cx="1080" cy="560" r="240" fill="#d946ef" opacity="0.15"/>
+  <rect x="80" y="150" width="104" height="104" rx="26" fill="url(#badge)"/>
+  <text x="132" y="220" font-family="Inter, sans-serif" font-size="46" font-weight="800" fill="#fff" text-anchor="middle">X5</text>
+  <text x="80" y="340" font-family="Inter, sans-serif" font-size="68" font-weight="800" fill="url(#txt)">X-5 SMAN 1 Purbalingga</text>
+  <text x="80" y="400" font-family="Inter, sans-serif" font-size="30" fill="#94a3b8">Platform digital kelas modern</text>
+  <text x="80" y="470" font-family="Inter, sans-serif" font-size="22" fill="#64748b">Kehadiran · Tugas · Nilai · Materi · Galeri · Chat Real-time</text>
+</svg>

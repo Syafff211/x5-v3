@@ -1,0 +1,7 @@
+User-agent: *
+Allow: /
+Disallow: /admin
+Disallow: /dashboard
+Disallow: /auth/admin
+
+Sitemap: https://x5-sman1-purbalingga.vercel.app/sitemap.xml
