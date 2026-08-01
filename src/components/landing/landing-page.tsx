@@ -289,7 +289,7 @@ export function LandingPage() {
                 </div>
                 <div className="space-y-3">
                   {[
-                    ['Kehadiran hari ini', '34 / 36 siswa', 'bg-emerald-500'],
+                    ['Kehadiran hari ini', '36 siswa', 'bg-emerald-500'],
                     ['PR yang aktif', '3 tugas', 'bg-indigo-500'],
                     ['Rata-rata nilai', '86,5', 'bg-fuchsia-500'],
                     ['Pesan belum dibaca', '2 pesan', 'bg-amber-500'],
