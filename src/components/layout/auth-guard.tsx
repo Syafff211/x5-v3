@@ -40,6 +40,21 @@ export function AuthGuard({
     let active = true
     setChecked(false)
     ;(async () => {
+      // Tunggu Zustand selesai memulihkan sesi dari localStorage.
+      // Tanpa ini, membuka URL langsung (bukan navigasi antar-halaman) sempat
+      // membaca profile = null dan pengguna terlempar ke halaman login.
+      const persist = (useAuthStore as any).persist
+      if (persist && !persist.hasHydrated?.()) {
+        await new Promise<void>((resolve) => {
+          const stop = persist.onFinishHydration?.(() => resolve())
+          setTimeout(() => {
+            stop?.()
+            resolve()
+          }, 1200)
+        })
+      }
+      if (!active) return
+
       if (!useAuthStore.getState().initialized) await initialize()
       if (!active) return
 
