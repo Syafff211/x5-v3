@@ -3,6 +3,7 @@
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import { createClient } from '@/lib/supabase/client'
+import { isSupabaseConfigured } from '@/lib/supabase/config'
 import {
   DEMO_ANNOUNCEMENTS,
   DEMO_ASSIGNMENTS,
@@ -69,6 +70,10 @@ interface DataState {
   resetAll: () => void
   /** Tarik seluruh data dari Supabase (no-op saat mode demo). */
   hydrateFromSupabase: () => Promise<void>
+  /** Tarik hanya data publik (galeri, organisasi, profil) untuk landing page. */
+  hydratePublic: () => Promise<void>
+  /** true setelah data publik selesai diambil dari server. */
+  publicHydrated: boolean
 }
 
 const KEY_MAP: Record<Table, keyof DataState> = {
@@ -120,6 +125,32 @@ export const useDataStore = create<DataState>()(
     (set) => ({
       ...INITIAL,
       hydrated: false,
+      publicHydrated: false,
+
+      hydratePublic: async () => {
+        const supabase = createClient()
+        if (!supabase) {
+          set({ publicHydrated: true } as any)
+          return
+        }
+        const [gal, org, prof] = await Promise.all([
+          supabase.from('gallery').select('*').order('created_at', { ascending: false }),
+          supabase.from('organization').select('*').order('order', { ascending: true }),
+          supabase.from('profiles').select('id,full_name,avatar_url,nisn,role,email,user_id,created_at,updated_at'),
+        ])
+
+        // PENTING: terapkan hasil server walaupun kosong.
+        // Kalau hanya diterapkan saat ada isi, penghapusan foto oleh admin
+        // tidak pernah sampai ke pengunjung — mereka terus melihat galeri lama
+        // dari cache localStorage.
+        const patch: Record<string, unknown> = {}
+        if (!gal.error && Array.isArray(gal.data)) patch.gallery = gal.data
+        if (!org.error && Array.isArray(org.data)) patch.organization = org.data
+        if (!prof.error && Array.isArray(prof.data) && prof.data.length) patch.students = prof.data
+
+        patch.publicHydrated = true
+        set(patch as any)
+      },
 
       hydrateFromSupabase: async () => {
         const supabase = createClient()
@@ -178,10 +209,18 @@ export const useDataStore = create<DataState>()(
     }),
     {
       name: 'x5-data',
-      version: 3, // bump = buang cache data lama dari browser
+      version: 5, // bump = buang cache data lama dari browser
       storage: createJSONStorage(() => localStorage),
       partialize: (s) => {
-        const { hydrated, add, update, remove, replace, resetAll, hydrateFromSupabase, ...rest } = s as any
+        const { hydrated, publicHydrated, add, update, remove, replace, resetAll,
+                hydrateFromSupabase, hydratePublic, ...rest } = s as any
+        // Saat Supabase aktif, database adalah sumber kebenaran.
+        // Menyimpan salinan di localStorage justru membuat pengunjung
+        // melihat data basi setelah admin mengubah isinya.
+        if (isSupabaseConfigured) {
+          const { gallery, organization, students, ...lokal } = rest
+          return lokal
+        }
         return rest
       },
     }
