@@ -7,34 +7,31 @@ import { ChevronLeft, ChevronRight, Images, X, ZoomIn } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useDataStore } from '@/store/data-store'
+import { isSupabaseConfigured } from '@/lib/supabase/config'
 import { cn, formatDate } from '@/lib/utils'
-
-/** Foto contoh saat galeri masih kosong, supaya bagian ini tetap hidup. */
-const CONTOH = [
-  { id: 'g1', title: 'Kegiatan Belajar di Kelas', category: 'Kegiatan Kelas', media_url: 'https://images.unsplash.com/photo-1523240795612-9a054b0db644?auto=format&fit=crop&w=1000&q=70' },
-  { id: 'g2', title: 'Diskusi Kelompok', category: 'Kegiatan Kelas', media_url: 'https://images.unsplash.com/photo-1543269865-cbf427effbad?auto=format&fit=crop&w=1000&q=70' },
-  { id: 'g3', title: 'Praktikum Laboratorium', category: 'Kegiatan Kelas', media_url: 'https://images.unsplash.com/photo-1567427017947-545c5f8d16ad?auto=format&fit=crop&w=1000&q=70' },
-  { id: 'g4', title: 'Class Meeting', category: 'Olahraga', media_url: 'https://images.unsplash.com/photo-1546519638-68e109498ffc?auto=format&fit=crop&w=1000&q=70' },
-  { id: 'g5', title: 'Study Tour', category: 'Study Tour', media_url: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?auto=format&fit=crop&w=1000&q=70' },
-  { id: 'g6', title: 'Kebersamaan Kelas', category: 'Kegiatan Kelas', media_url: 'https://images.unsplash.com/photo-1529156069898-49953e39b3ac?auto=format&fit=crop&w=1000&q=70' },
-]
 
 export function GallerySection() {
   const gallery = useDataStore((s) => s.gallery)
+  const publicHydrated = useDataStore((s) => s.publicHydrated)
   const [index, setIndex] = useState<number | null>(null)
 
-  const items = useMemo(() => {
-    if (gallery.length > 0) {
-      return gallery.slice(0, 6).map((g) => ({
+  // Saat Supabase aktif, tunggu data server sebelum menampilkan apa pun.
+  // Tanpa ini, foto contoh sempat berkedip lalu tertimpa foto asli.
+  const menunggu = isSupabaseConfigured && !publicHydrated
+
+  // Galeri selalu berasal dari data asli. Tidak ada foto contoh —
+  // kalau kosong, tampilkan pesan kosong yang jujur.
+  const items = useMemo(
+    () =>
+      gallery.slice(0, 6).map((g) => ({
         id: g.id,
         title: g.title,
         category: g.category,
         media_url: g.media_url,
         created_at: g.created_at,
-      }))
-    }
-    return CONTOH.map((c) => ({ ...c, created_at: '' }))
-  }, [gallery])
+      })),
+    [gallery]
+  )
 
   const tutup = useCallback(() => setIndex(null), [])
   const prev = useCallback(() => setIndex((i) => (i === null ? null : (i - 1 + items.length) % items.length)), [items.length])
@@ -78,7 +75,17 @@ export function GallerySection() {
           </p>
         </motion.div>
 
-        {/* Grid bergaya mozaik */}
+        {menunggu ? (
+          <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <div key={i} className="aspect-[4/3] animate-pulse rounded-2xl bg-muted" />
+            ))}
+          </div>
+        ) : items.length === 0 ? (
+          <p className="rounded-2xl border border-dashed border-border py-14 text-center text-sm text-muted-foreground">
+            Belum ada foto di galeri.
+          </p>
+        ) : (
         <div className="grid grid-cols-2 gap-3 sm:gap-4 md:grid-cols-3">
           {items.map((g, i) => (
             <motion.button
@@ -102,7 +109,7 @@ export function GallerySection() {
                 fill
                 sizes="(max-width: 768px) 50vw, 25vw"
                 className="object-cover transition-transform duration-500 group-hover:scale-110"
-                unoptimized={g.media_url.startsWith('blob:')}
+                unoptimized={g.media_url.startsWith('data:') || g.media_url.startsWith('blob:')}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent opacity-85 transition-opacity group-hover:opacity-100" />
               <div className="absolute inset-x-0 bottom-0 p-3">
@@ -115,6 +122,7 @@ export function GallerySection() {
             </motion.button>
           ))}
         </div>
+        )}
       </div>
 
       {/* Lightbox */}
