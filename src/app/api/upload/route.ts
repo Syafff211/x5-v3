@@ -28,9 +28,12 @@ const MAKS = 5 * 1024 * 1024
  * memakai Supabase Storage (lihat src/lib/upload.ts).
  */
 export async function POST(req: Request) {
-  if (process.env.NODE_ENV === 'production') {
+  // Vercel & serverless lain punya filesystem read-only.
+  // Deteksi lewat env bawaan platform, bukan NODE_ENV, supaya `next start`
+  // di server sendiri (VPS/lokal) tetap bisa menulis berkas.
+  if (process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME) {
     return NextResponse.json(
-      { error: 'Penyimpanan lokal tidak tersedia di produksi. Gunakan Supabase Storage.', fallback: true },
+      { error: 'Filesystem read-only. Gunakan Supabase Storage.', fallback: true },
       { status: 501 }
     )
   }
