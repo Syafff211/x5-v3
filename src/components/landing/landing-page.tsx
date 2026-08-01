@@ -31,6 +31,9 @@ import { ParticlesBackground } from '@/components/shared/particles-background'
 import { GradientOrbs } from '@/components/shared/gradient-orbs'
 import { ThemeToggle } from '@/components/shared/theme-toggle'
 import { useLandingStore } from '@/store/landing-store'
+import { GallerySection } from './gallery-section'
+import { OrganizationSection } from './organization-section'
+import { FloatingAssistant } from './floating-assistant'
 
 const ICONS: Record<string, any> = {
   CalendarCheck,
@@ -60,8 +63,8 @@ export function LandingPage() {
               <div className="grid h-9 w-9 place-items-center rounded-xl brand-gradient text-sm font-bold text-white shadow-lg shadow-primary/30">
                 X5
               </div>
-              <div className="hidden sm:block">
-                <p className="text-sm font-semibold leading-tight">X-5 SMAN 1 Purbalingga</p>
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold leading-tight">X-5 SMAN 1 Purbalingga</p>
                 <p className="text-[11px] leading-tight text-muted-foreground">Kelas Digital</p>
               </div>
             </Link>
@@ -69,7 +72,8 @@ export function LandingPage() {
             <div className="hidden items-center gap-1 md:flex">
               {[
                 ['Fitur', '#fitur'],
-                ['Statistik', '#statistik'],
+                ['Galeri', '#galeri'],
+                ['Pengurus', '#organisasi'],
                 ['Tentang', '#tentang'],
               ].map(([label, href]) => (
                 <a
@@ -116,7 +120,7 @@ export function LandingPage() {
               initial={{ opacity: 0, y: 26 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.7, delay: 0.1 }}
-              className="text-balance text-4xl font-extrabold tracking-tight sm:text-6xl lg:text-7xl"
+              className="text-balance break-words text-[2rem] font-extrabold leading-[1.1] tracking-tight sm:text-5xl lg:text-6xl xl:text-7xl"
             >
               <span className="text-gradient">{content.hero_title}</span>
             </motion.h1>
@@ -156,7 +160,7 @@ export function LandingPage() {
               transition={{ duration: 0.8, delay: 0.5 }}
               className="mt-14 flex flex-wrap items-center justify-center gap-x-8 gap-y-3 text-xs text-muted-foreground"
             >
-              {['Real-time', 'PWA & Offline', 'Aman dengan RLS', 'Responsif'].map((t) => (
+              {['Pembaruan langsung', 'Bisa dipasang di HP', 'Data aman', 'Nyaman di layar apa pun'].map((t) => (
                 <span key={t} className="flex items-center gap-1.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-primary" />
                   {t}
@@ -176,13 +180,13 @@ export function LandingPage() {
               className="mx-auto mb-14 max-w-2xl text-center"
             >
               <Badge variant="outline" className="mb-4">
-                Fitur Unggulan
+                Apa Saja Isinya
               </Badge>
               <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-                Semua kebutuhan kelas, <span className="text-gradient">satu platform</span>
+                Semua kebutuhan kelas, <span className="text-gradient">dalam satu tempat</span>
               </h2>
               <p className="mt-4 text-muted-foreground">
-                Dirancang untuk memudahkan siswa dan wali kelas mengelola kegiatan belajar sehari-hari.
+                Enam hal yang paling sering kami butuhkan setiap hari, dibuat sesederhana mungkin.
               </p>
             </motion.div>
 
@@ -227,26 +231,30 @@ export function LandingPage() {
           </div>
         </section>
 
+        <GallerySection />
+
+        <OrganizationSection />
+
         {/* ---------- ABOUT / CTA ---------- */}
         <section id="tentang" className="relative px-4 py-24">
           <div className="mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-2">
             <motion.div initial={{ opacity: 0, x: -24 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
               <Badge variant="outline" className="mb-4">
-                Tentang Kelas
+                Tentang Kami
               </Badge>
               <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
-                Kelas X-5, <span className="text-gradient">solid dan berprestasi</span>
+                Kelas X-5, <span className="text-gradient">kompak dan terorganisir</span>
               </h2>
               <p className="mt-4 leading-relaxed text-muted-foreground">
-                Kami adalah 32 siswa kelas X-5 SMAN 1 Purbalingga yang percaya bahwa belajar jadi lebih menyenangkan
-                ketika terorganisir dengan baik. Platform ini kami gunakan setiap hari untuk absensi, mengumpulkan
-                tugas, melihat nilai, dan tetap terhubung satu sama lain.
+                Kami 36 siswa yang percaya belajar terasa lebih ringan kalau semuanya tertata. Dulu catatan PR
+                tersebar di berbagai grup obrolan dan absensi masih ditulis manual. Sekarang semuanya ada di sini —
+                satu tempat yang kami buka setiap hari.
               </p>
               <ul className="mt-6 space-y-3">
                 {[
-                  ['Absensi digital tanpa kertas', CalendarCheck],
-                  ['Tugas & materi terpusat, tidak tercecer', ClipboardList],
-                  ['Transparansi nilai untuk siswa & orang tua', GraduationCap],
+                  ['Absensi harian tanpa buku catatan', CalendarCheck],
+                  ['Daftar PR lengkap dengan tenggatnya', ClipboardList],
+                  ['Nilai terbuka, bisa dipantau kapan saja', GraduationCap],
                 ].map(([text, Icon]: any) => (
                   <li key={text} className="flex items-start gap-3">
                     <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-lg bg-primary/15 text-primary">
@@ -281,9 +289,9 @@ export function LandingPage() {
                 </div>
                 <div className="space-y-3">
                   {[
-                    ['Kehadiran hari ini', '30 / 32 siswa', 'bg-emerald-500'],
-                    ['Tugas aktif', '5 tugas', 'bg-indigo-500'],
-                    ['Rata-rata nilai', '87.4', 'bg-fuchsia-500'],
+                    ['Kehadiran hari ini', '34 / 36 siswa', 'bg-emerald-500'],
+                    ['PR yang aktif', '3 tugas', 'bg-indigo-500'],
+                    ['Rata-rata nilai', '86,5', 'bg-fuchsia-500'],
                     ['Pesan belum dibaca', '2 pesan', 'bg-amber-500'],
                   ].map(([label, val, color], i) => (
                     <motion.div
@@ -346,7 +354,8 @@ export function LandingPage() {
               <h3 className="mb-3 text-sm font-semibold">Navigasi</h3>
               <ul className="space-y-2 text-sm text-muted-foreground">
                 <li><a className="hover:text-foreground" href="#fitur">Fitur</a></li>
-                <li><a className="hover:text-foreground" href="#statistik">Statistik</a></li>
+                <li><a className="hover:text-foreground" href="#galeri">Galeri</a></li>
+                <li><a className="hover:text-foreground" href="#organisasi">Pengurus Kelas</a></li>
                 <li><a className="hover:text-foreground" href="#tentang">Tentang</a></li>
                 <li><Link className="hover:text-foreground" href="/auth/login">Login Siswa</Link></li>
                 <li><Link className="hover:text-foreground" href="/auth/admin">Login Admin</Link></li>
@@ -378,6 +387,8 @@ export function LandingPage() {
           </div>
         </div>
       </footer>
+
+      <FloatingAssistant />
     </div>
   )
 }
