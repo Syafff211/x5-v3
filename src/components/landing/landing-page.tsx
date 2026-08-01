@@ -1,5 +1,7 @@
 'use client'
 
+import { useEffect } from 'react'
+
 import Link from 'next/link'
 import { motion } from 'framer-motion'
 import {
@@ -31,6 +33,7 @@ import { ParticlesBackground } from '@/components/shared/particles-background'
 import { GradientOrbs } from '@/components/shared/gradient-orbs'
 import { ThemeToggle } from '@/components/shared/theme-toggle'
 import { useLandingStore } from '@/store/landing-store'
+import { useDataStore } from '@/store/data-store'
 import { GallerySection } from './gallery-section'
 import { OrganizationSection } from './organization-section'
 import { FloatingAssistant } from './floating-assistant'
@@ -52,6 +55,25 @@ const ICONS: Record<string, any> = {
 
 export function LandingPage() {
   const content = useLandingStore((s) => s.content)
+  const students = useDataStore((s) => s.students)
+  const gallery = useDataStore((s) => s.gallery)
+  const organization = useDataStore((s) => s.organization)
+
+  // Kartu pratinjau memakai angka nyata, bukan contoh yang dikarang.
+  const jumlahSiswa = students.filter((x) => x.role === 'student').length
+  const ringkasan: [string, string, string][] = [
+    ['Siswa terdaftar', `${jumlahSiswa} siswa`, 'bg-emerald-500'],
+    ['Pengurus kelas', `${organization.length} orang`, 'bg-indigo-500'],
+    ['Foto galeri', `${gallery.length} foto`, 'bg-fuchsia-500'],
+    ['Mata pelajaran', `${content.stats[1]?.value ?? 12} mapel`, 'bg-amber-500'],
+  ]
+
+  // Tarik konten & data publik dari Supabase supaya tamu melihat
+  // konfigurasi terbaru dari Super Admin, bukan cache browsernya sendiri.
+  useEffect(() => {
+    void useLandingStore.getState().hydrateFromServer()
+    void useDataStore.getState().hydratePublic()
+  }, [])
 
   return (
     <div className="relative min-h-dvh overflow-x-hidden bg-background">
@@ -289,10 +311,7 @@ export function LandingPage() {
                 </div>
                 <div className="space-y-3">
                   {[
-                    ['Kehadiran hari ini', '36 siswa', 'bg-emerald-500'],
-                    ['PR yang aktif', '3 tugas', 'bg-indigo-500'],
-                    ['Rata-rata nilai', '86,5', 'bg-fuchsia-500'],
-                    ['Pesan belum dibaca', '2 pesan', 'bg-amber-500'],
+                    ...ringkasan,
                   ].map(([label, val, color], i) => (
                     <motion.div
                       key={label}
