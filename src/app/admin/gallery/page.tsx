@@ -3,7 +3,7 @@
 import { useMemo, useRef, useState } from 'react'
 import Image from 'next/image'
 import { toast } from 'sonner'
-import { ArrowDown, ArrowUp, ImagePlus, Images, Pencil, Trash2, Upload } from 'lucide-react'
+import { AlertTriangle, ArrowDown, ArrowUp, ImagePlus, Images, Loader2, Pencil, Trash2, Upload } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -13,6 +13,8 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { EmptyState } from '@/components/shared/empty-state'
+import { ImageUploader } from '@/components/shared/image-uploader'
+import { unggahGambar } from '@/lib/upload'
 import { useAuthStore } from '@/store/auth-store'
 import { nowIso, uid, useDataStore } from '@/store/data-store'
 import { GALLERY_CATEGORIES } from '@/lib/demo-data'
@@ -34,9 +36,15 @@ export default function AdminGalleryPage() {
   const [editing, setEditing] = useState<GalleryItem | null>(null)
   const [form, setForm] = useState({ title: '', category: CATS[0], media_url: '' })
   const [confirmDelete, setConfirmDelete] = useState<GalleryItem | null>(null)
+  const [sedangUnggah, setSedangUnggah] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   const list = useMemo(() => gallery.filter((g) => filter === 'Semua' || g.category === filter), [gallery, filter])
+
+  // Foto ber-data URL berarti belum tersimpan di Supabase Storage.
+  // Hanya data URL yang benar-benar 'tersimpan di browser'.
+  // Path seperti /photos/x.jpg sudah berupa berkas nyata di server.
+  const adaFotoLokal = useMemo(() => gallery.some((g) => g.media_url.startsWith('data:')), [gallery])
 
   function openAdd() {
     setEditing(null)
@@ -66,11 +74,23 @@ export default function AdminGalleryPage() {
     setOpen(false)
   }
 
-  function bulkUpload(files: FileList) {
-    let count = 0
-    Array.from(files).forEach((f) => {
-      if (!f.type.startsWith('image/')) return
-      const url = URL.createObjectURL(f)
+  async function bulkUpload(files: FileList) {
+    const daftar = Array.from(files).filter((f) => f.type.startsWith('image/'))
+    if (!daftar.length) {
+      toast.error('Tidak ada berkas gambar yang dipilih.')
+      return
+    }
+
+    setSedangUnggah(true)
+    let berhasil = 0
+    const gagal: string[] = []
+
+    for (const f of daftar) {
+      const { url, error } = await unggahGambar(f, 'gallery')
+      if (error || !url) {
+        gagal.push(f.name)
+        continue
+      }
       add('gallery', {
         id: uid(),
         title: f.name.replace(/\.[^.]+$/, ''),
@@ -80,9 +100,12 @@ export default function AdminGalleryPage() {
         uploaded_by: profile?.id ?? null,
         created_at: nowIso(),
       })
-      count++
-    })
-    toast.success(`${count} foto diunggah.`)
+      berhasil++
+    }
+
+    setSedangUnggah(false)
+    if (berhasil) toast.success(`${berhasil} foto berhasil diunggah.`)
+    if (gagal.length) toast.error(`${gagal.length} berkas gagal: ${gagal.slice(0, 2).join(', ')}`)
     if (fileRef.current) fileRef.current.value = ''
   }
 
@@ -103,8 +126,9 @@ export default function AdminGalleryPage() {
         action={
           <>
             <input ref={fileRef} type="file" accept="image/*" multiple className="sr-only" onChange={(e) => e.target.files && bulkUpload(e.target.files)} />
-            <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()}>
-              <Upload className="h-4 w-4" /> Bulk Upload
+            <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} disabled={sedangUnggah}>
+              {sedangUnggah ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+              {sedangUnggah ? 'Mengunggah...' : 'Bulk Upload'}
             </Button>
             <Button variant="gradient" size="sm" onClick={openAdd}>
               <ImagePlus className="h-4 w-4" /> Tambah Media
@@ -112,6 +136,23 @@ export default function AdminGalleryPage() {
           </>
         }
       />
+
+      {adaFotoLokal && (
+        <div className="flex items-start gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+          <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
+          <div className="text-sm">
+            <p className="font-medium text-amber-600 dark:text-amber-400">
+              Foto tersimpan sementara di browser ini
+            </p>
+            <p className="mt-0.5 text-muted-foreground">
+              Supabase Storage belum aktif, jadi foto belum tersimpan di server dan{' '}
+              <strong>belum terlihat oleh pengunjung lain</strong>. Jalankan{' '}
+              <code className="rounded bg-muted px-1">supabase/AKTIFKAN-STORAGE.sql</code> di SQL Editor,
+              lalu unggah ulang foto-foto ini.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2">
         {GALLERY_CATEGORIES.map((c) => (
@@ -141,7 +182,7 @@ export default function AdminGalleryPage() {
           {list.map((g) => (
             <Card key={g.id} glass className="group overflow-hidden p-0">
               <div className="relative aspect-square bg-muted">
-                <Image src={g.media_url} alt={g.title} fill sizes="240px" className="object-cover" unoptimized={g.media_url.startsWith('blob:')} />
+                <Image src={g.media_url} alt={g.title} fill sizes="240px" className="object-cover" unoptimized={g.media_url.startsWith('data:') || g.media_url.startsWith('blob:')} />
                 <div className="absolute inset-0 flex items-center justify-center gap-1.5 bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
                   <Button variant="ghost" size="icon-sm" onClick={() => move(g, -1)} aria-label="Naikkan urutan" className="text-white hover:bg-white/20"><ArrowUp className="h-4 w-4" /></Button>
                   <Button variant="ghost" size="icon-sm" onClick={() => move(g, 1)} aria-label="Turunkan urutan" className="text-white hover:bg-white/20"><ArrowDown className="h-4 w-4" /></Button>
@@ -180,9 +221,23 @@ export default function AdminGalleryPage() {
               </Select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="g-url">URL Gambar {!editing && '*'}</Label>
-              <Input id="g-url" type="url" value={form.media_url} onChange={(e) => setForm({ ...form, media_url: e.target.value })} placeholder="https://..." required={!editing} />
-              <p className="text-xs text-muted-foreground">Setelah Supabase Storage aktif, upload file langsung tersedia.</p>
+              <Label>Gambar {!editing && '*'}</Label>
+              <ImageUploader
+                value={form.media_url || null}
+                onChange={(url) => setForm({ ...form, media_url: url ?? '' })}
+                bucket="gallery"
+                label="Pilih foto kegiatan"
+              />
+              <details className="text-xs text-muted-foreground">
+                <summary className="cursor-pointer hover:text-foreground">atau tempel URL gambar</summary>
+                <Input
+                  className="mt-2"
+                  type="url"
+                  value={form.media_url.startsWith('data:') ? '' : form.media_url}
+                  onChange={(e) => setForm({ ...form, media_url: e.target.value })}
+                  placeholder="https://..."
+                />
+              </details>
             </div>
             <DialogFooter>
               <Button type="button" variant="outline" onClick={() => setOpen(false)}>Batal</Button>
