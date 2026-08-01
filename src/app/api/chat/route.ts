@@ -3,7 +3,7 @@ import { NextResponse } from 'next/server'
 export const runtime = 'edge'
 
 const GROQ_URL = 'https://api.groq.com/openai/v1/chat/completions'
-const MODEL = process.env.GROQ_MODEL ?? 'openai/gpt-oss-safeguard-20b'
+const MODEL = process.env.GROQ_MODEL ?? 'openai/gpt-oss-120b'
 
 const SISTEM = `Kamu adalah "Asisten X-5", asisten ramah yang di build oleh salah satu siswa di kelas x5 yaitu Muhammad Syafiq untuk situs kelas X-5 SMAN 1 Purbalingga.
 
