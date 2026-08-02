@@ -1,13 +1,10 @@
 import type {
   Announcement,
   Assignment,
-  AssignmentSubmission,
   Attendance,
   CalendarEvent,
   GalleryItem,
-  Grade,
   LandingContent,
-  Material,
   Message,
   OrganizationMember,
   Profile,
@@ -19,7 +16,7 @@ import type {
  * DATA AWAL APLIKASI — BERSIH
  * ---------------------------------------------------------------------------
  * Hanya berisi daftar siswa asli kelas X-5 dan jadwal pelajaran.
- * Seluruh data transaksional (kehadiran, tugas, nilai, materi, pengumuman,
+ * Seluruh data transaksional (kehadiran, PR, pengumuman,
  * galeri, pesan) sengaja DIKOSONGKAN agar aplikasi dimulai dari nol.
  *
  * Nilai-nilai di sini dipakai saat mode demo (Supabase belum dikonfigurasi).
@@ -150,13 +147,27 @@ export const DEMO_PROFILES: Profile[] = [...DEMO_STUDENTS, DEMO_ADMIN, DEMO_SUPE
 
 export const DEMO_ATTENDANCE: Attendance[] = []
 export const DEMO_ASSIGNMENTS: Assignment[] = []
-export const DEMO_SUBMISSIONS: AssignmentSubmission[] = []
-export const DEMO_GRADES: Grade[] = []
-export const DEMO_MATERIALS: Material[] = []
 export const DEMO_ANNOUNCEMENTS: Announcement[] = []
 export const DEMO_GALLERY: GalleryItem[] = []
 export const DEMO_MESSAGES: Message[] = []
-export const DEMO_ORGANIZATION: OrganizationMember[] = []
+/** Pengurus kelas — dapat diubah kapan saja lewat Admin → Organisasi. */
+export const DEMO_ORGANIZATION: OrganizationMember[] = [
+  { position: 'Ketua Kelas',   idx: 2  },
+  { position: 'Wakil Ketua',   idx: 14 },
+  { position: 'Sekretaris',    idx: 0  },
+  { position: 'Bendahara',     idx: 10 },
+  { position: 'Seksi Kebersihan', idx: 26 },
+  { position: 'Seksi Keamanan',   idx: 30 },
+].map((o, i) => {
+  const st = DEMO_STUDENTS[o.idx]
+  return {
+    id: `org-${String(i + 1).padStart(2, '0')}`,
+    position: o.position,
+    student_id: st.id,
+    order: i + 1,
+    profiles: { id: st.id, full_name: st.full_name, avatar_url: st.avatar_url, nisn: st.nisn },
+  }
+})
 export const DEMO_EVENTS: CalendarEvent[] = []
 
 export const GALLERY_CATEGORIES = [
@@ -188,25 +199,50 @@ export const DEMO_SCHEDULE: Schedule[] = [
 ]
 
 export const DEFAULT_LANDING: LandingContent = {
-  hero_badge: 'Platform Kelas Digital · Tahun Ajaran 2025/2026',
+  hero_badge: 'Tahun Ajaran 2025/2026',
   hero_title: 'X-5 SMAN 1 Purbalingga',
   hero_subtitle:
-    'Platform digital kelas modern — kehadiran, tugas, nilai, materi, dan komunikasi kelas dalam satu tempat yang cepat dan menyenangkan.',
-  cta_primary: 'Login Siswa',
-  cta_secondary: 'Login Admin',
+    'Satu tempat untuk semua kebutuhan kelas — catat kehadiran, pantau PR, lihat jadwal, dan tetap terhubung dengan teman sekelas.',
+  cta_primary: 'Masuk sebagai Siswa',
+  cta_secondary: 'Masuk sebagai Admin',
   stats: [
-    { label: 'Total Siswa', value: DEMO_STUDENTS.length, suffix: '' },
+    { label: 'Siswa Aktif', value: DEMO_STUDENTS.length, suffix: '' },
     { label: 'Mata Pelajaran', value: SUBJECTS.length, suffix: '' },
-    { label: 'Hari Efektif', value: 5, suffix: '' },
-    { label: 'Akses Platform', value: 24, suffix: '/7' },
+    { label: 'Hari Belajar', value: 5, suffix: '' },
+    { label: 'Bisa Diakses', value: 24, suffix: '/7' },
   ],
   features: [
-    { icon: 'CalendarCheck', title: 'Kehadiran', description: 'Absensi harian real-time dengan rekap otomatis dan riwayat lengkap per siswa.' },
-    { icon: 'ClipboardList', title: 'Tugas', description: 'Daftar tugas, deadline, pengumpulan file, dan penilaian langsung dari guru.' },
-    { icon: 'GraduationCap', title: 'Nilai', description: 'Nilai harian, UTS, dan UAS lengkap dengan rata-rata dan grafik perkembangan.' },
-    { icon: 'MessageSquare', title: 'Messages', description: 'Chat antar teman sekelas dengan typing indicator dan read receipts real-time.' },
-    { icon: 'Images', title: 'Galeri', description: 'Dokumentasi kegiatan kelas dalam galeri foto dan video dengan lightbox.' },
-    { icon: 'Megaphone', title: 'Pengumuman', description: 'Informasi penting dari wali kelas, lengkap dengan pengumuman yang dipin.' },
+    {
+      icon: 'CalendarCheck',
+      title: 'Kehadiran',
+      description: 'Isi absensi sendiri setiap pagi. Rekap dan persentase kehadiranmu terhitung otomatis.',
+    },
+    {
+      icon: 'ClipboardList',
+      title: 'Info PR',
+      description: 'Semua PR beserta tenggatnya di satu daftar. Unggah jawaban langsung, tak ada lagi yang terlewat.',
+    },
+    {
+      icon: 'CalendarDays',
+      title: 'Jadwal Pelajaran',
+      description: 'Jadwal mingguan lengkap dengan jam, ruang, dan guru pengampu.',
+    },
+    {
+      icon: 'MessageSquare',
+      title: 'Obrolan Kelas',
+      description: 'Berkirim pesan dengan teman sekelas secara langsung, lengkap dengan tanda dibaca.',
+    },
+    {
+      icon: 'Images',
+      title: 'Galeri',
+      description: 'Kumpulan foto kegiatan kelas, dari praktikum hingga class meeting, tersimpan rapi.',
+    },
+    {
+      icon: 'Megaphone',
+      title: 'Pengumuman',
+      description: 'Informasi penting dari wali kelas langsung sampai, yang mendesak ditandai khusus.',
+    },
   ],
-  footer_text: 'Dibuat dengan ❤️ oleh siswa X-5 SMAN 1 Purbalingga.',
+  footer_text:
+    'Dibuat oleh siswa X-5 SMAN 1 Purbalingga, untuk memudahkan hari-hari belajar kami.',
 }
