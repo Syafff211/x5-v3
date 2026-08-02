@@ -276,7 +276,7 @@ export function LandingPage() {
                 {[
                   ['Absensi harian tanpa buku catatan', CalendarCheck],
                   ['Daftar PR lengkap dengan tenggatnya', ClipboardList],
-                  ['Nilai terbuka, bisa dipantau kapan saja', GraduationCap],
+                  ['Jadwal & pengumuman selalu ter-update', CalendarDays],
                 ].map(([text, Icon]: any) => (
                   <li key={text} className="flex items-start gap-3">
                     <span className="mt-0.5 grid h-6 w-6 shrink-0 place-items-center rounded-lg bg-primary/15 text-primary">
