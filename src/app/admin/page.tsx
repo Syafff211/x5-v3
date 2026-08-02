@@ -10,7 +10,6 @@ import {
   CalendarCheck,
   ClipboardList,
   FileBarChart,
-  GraduationCap,
   Images,
   Megaphone,
   UserCog,
@@ -36,7 +35,6 @@ const BASE_ACTIONS = [
   { label: 'Tambah Siswa', href: '/admin/students', icon: UserPlus, accent: 'from-indigo-500 to-violet-500' },
   { label: 'Input Kehadiran', href: '/admin/attendance', icon: CalendarCheck, accent: 'from-emerald-500 to-teal-500' },
   { label: 'Buat Info PR', href: '/admin/assignments', icon: ClipboardList, accent: 'from-sky-500 to-blue-500' },
-  { label: 'Input Nilai', href: '/admin/grades', icon: GraduationCap, accent: 'from-fuchsia-500 to-pink-500' },
   { label: 'Jadwal Pelajaran', href: '/admin/schedule', icon: BookOpen, accent: 'from-cyan-500 to-sky-500' },
   { label: 'Pengumuman', href: '/admin/announcements', icon: Megaphone, accent: 'from-amber-500 to-orange-500' },
   { label: 'Upload Galeri', href: '/admin/gallery', icon: Images, accent: 'from-rose-500 to-red-500' },
@@ -61,17 +59,14 @@ export default function AdminDashboard() {
   const profile = useAuthStore((s) => s.profile)
   const superAdmin = isSuperAdmin(profile?.role)
   const QUICK_ACTIONS = superAdmin ? [...BASE_ACTIONS, ...SUPER_ACTIONS] : BASE_ACTIONS
-  const { students, attendance, assignments, grades, submissions, announcements } = useDataStore()
+  const { students, attendance, assignments, announcements } = useDataStore()
 
   const studentList = students.filter((s) => s.role === 'student')
   const today = new Date().toISOString().slice(0, 10)
   const todayAttendance = attendance.filter((a) => a.date === today)
   const presentToday = todayAttendance.filter((a) => a.status === 'present').length
   const activeAssignments = assignments.filter((a) => new Date(a.deadline).getTime() > Date.now())
-  const avgScore = average(grades.map((g) => g.score))
-  const ungraded = submissions.filter((s) => s.score == null)
 
-  const recentSubs = [...submissions].sort((a, b) => +new Date(b.submitted_at) - +new Date(a.submitted_at)).slice(0, 5)
   const studentName = (id: string) => students.find((s) => s.id === id)?.full_name ?? 'Siswa'
   const studentAvatar = (id: string) => students.find((s) => s.id === id)?.avatar_url ?? null
   const assignmentTitle = (id: string) => assignments.find((a) => a.id === id)?.title ?? 'Tugas'
@@ -95,9 +90,9 @@ export default function AdminDashboard() {
           </Badge>
           <h1 className="text-2xl font-bold tracking-tight sm:text-3xl">Halo, {profile?.full_name?.split(',')[0] ?? 'Admin'} 👋</h1>
           <p className="mt-2 text-sm text-white/85">
-            {ungraded.length > 0
-              ? `Ada ${ungraded.length} pengumpulan PR yang menunggu penilaian.`
-              : 'Semua PR sudah dinilai. Panel kelas dalam kondisi baik.'}
+            {activeAssignments.length > 0
+              ? `Ada ${activeAssignments.length} PR aktif untuk kelas X-5.`
+              : 'Belum ada PR aktif. Panel kelas dalam kondisi baik.'}
           </p>
           <div className="mt-5 flex flex-wrap gap-2">
             <Button asChild size="sm" className="bg-white text-rose-600 hover:bg-white/90">
@@ -120,8 +115,8 @@ export default function AdminDashboard() {
           accent="emerald"
           trend={`dari ${studentList.length} siswa`}
         />
-        <StatCard label="PR Aktif" value={activeAssignments.length} icon={ClipboardList} accent="sky" trend={`${ungraded.length} perlu dinilai`} />
-        <StatCard label="Rata-rata Nilai" value={avgScore} icon={TrendingUp} accent="fuchsia" trend={`${grades.length} nilai tercatat`} />
+        <StatCard label="PR Aktif" value={activeAssignments.length} icon={ClipboardList} accent="sky" trend="masih berjalan" />
+        <StatCard label="Pengumuman" value={announcements.length} icon={Megaphone} accent="fuchsia" trend="total terbit" />
       </div>
 
       {/* Quick actions */}
@@ -151,32 +146,33 @@ export default function AdminDashboard() {
       </Card>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        {/* Recent submissions */}
+        {/* PR terbaru */}
         <Card glass className="lg:col-span-2">
           <CardHeader className="flex-row items-center justify-between space-y-0">
-            <CardTitle className="text-base">Pengumpulan Terbaru</CardTitle>
+            <CardTitle className="text-base">Info PR Terbaru</CardTitle>
             <Button asChild variant="ghost" size="sm">
               <Link href="/admin/assignments">Semua <ArrowRight className="h-4 w-4" /></Link>
             </Button>
           </CardHeader>
           <CardContent className="space-y-2">
-            {recentSubs.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">Belum ada pengumpulan.</p>}
-            {recentSubs.map((s) => (
-              <div key={s.id} className="flex items-center gap-3 rounded-xl border border-border/60 bg-card/40 p-3">
-                <Avatar className="h-9 w-9 shrink-0">
-                  {studentAvatar(s.student_id) && <AvatarImage src={studentAvatar(s.student_id)!} alt="" />}
-                  <AvatarFallback className="text-[10px]">{initials(studentName(s.student_id))}</AvatarFallback>
-                </Avatar>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-medium">{studentName(s.student_id)}</p>
-                  <p className="truncate text-xs text-muted-foreground">{assignmentTitle(s.assignment_id)}</p>
+            {assignments.length === 0 && (
+              <p className="py-6 text-center text-sm text-muted-foreground">Belum ada PR.</p>
+            )}
+            {[...assignments]
+              .sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at))
+              .slice(0, 5)
+              .map((a) => (
+                <div key={a.id} className="flex items-center gap-3 rounded-xl border border-border/60 bg-card/40 p-3">
+                  <div className="grid h-9 w-9 shrink-0 place-items-center rounded-lg bg-primary/10 text-primary">
+                    <ClipboardList className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{a.title}</p>
+                    <p className="truncate text-xs text-muted-foreground">{a.subject}</p>
+                  </div>
+                  <p className="shrink-0 text-[10px] text-muted-foreground">{relativeTime(a.created_at)}</p>
                 </div>
-                <div className="shrink-0 text-right">
-                  {s.score != null ? <Badge variant="success">{s.score}</Badge> : <Badge variant="warning">Belum dinilai</Badge>}
-                  <p className="mt-1 text-[10px] text-muted-foreground">{relativeTime(s.submitted_at)}</p>
-                </div>
-              </div>
-            ))}
+              ))}
           </CardContent>
         </Card>
 
