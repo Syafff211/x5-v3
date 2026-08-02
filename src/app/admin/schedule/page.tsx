@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
-import { BookOpen, Pencil, Plus, Trash2 } from 'lucide-react'
+import { BookOpen, GripVertical, Pencil, Plus, Trash2, X } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -13,18 +13,19 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { EmptyState } from '@/components/shared/empty-state'
-import { uid, useDataStore } from '@/store/data-store'
-import { SUBJECTS } from '@/lib/demo-data'
+import { nowIso, uid, useDataStore } from '@/store/data-store'
+
 import { cn, sanitizeText } from '@/lib/utils'
-import type { Schedule } from '@/types/database'
+import type { Schedule, Subject } from '@/types/database'
 
 const DAYS = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
 const JS_DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
 
-const EMPTY = { day: 'Senin', time: '', subject: SUBJECTS[0], room: '', teacher: '' }
+const EMPTY = { day: 'Senin', time: '', subject: '', room: '', teacher: '' }
 
 export default function AdminSchedulePage() {
   const schedules = useDataStore((s) => s.schedules)
+  const subjects = useDataStore((s) => s.subjects)
   const add = useDataStore((s) => s.add)
   const update = useDataStore((s) => s.update)
   const remove = useDataStore((s) => s.remove)
@@ -35,12 +36,49 @@ export default function AdminSchedulePage() {
   const [editing, setEditing] = useState<Schedule | null>(null)
   const [form, setForm] = useState(EMPTY)
   const [confirmDelete, setConfirmDelete] = useState<Schedule | null>(null)
+  const [kelolaMapel, setKelolaMapel] = useState(false)
+  const [mapelBaru, setMapelBaru] = useState('')
+  const [hapusMapel, setHapusMapel] = useState<Subject | null>(null)
+
+  const daftarMapel = useMemo(
+    () => [...subjects].sort((a, b) => a.order - b.order),
+    [subjects]
+  )
+
+  function tambahMapel(e: React.FormEvent) {
+    e.preventDefault()
+    const nama = sanitizeText(mapelBaru, 60).trim()
+    if (nama.length < 2) return toast.error('Nama mata pelajaran minimal 2 karakter.')
+    if (subjects.some((x) => x.name.toLowerCase() === nama.toLowerCase())) {
+      return toast.error(`"${nama}" sudah ada dalam daftar.`)
+    }
+    add('subjects', {
+      id: uid(),
+      name: nama,
+      order: subjects.length + 1,
+      created_at: nowIso(),
+    })
+    setMapelBaru('')
+    toast.success(`Mata pelajaran "${nama}" ditambahkan.`)
+  }
+
+  function doHapusMapel() {
+    if (!hapusMapel) return
+    const dipakai = schedules.filter((s) => s.subject === hapusMapel.name).length
+    remove('subjects', hapusMapel.id)
+    toast.success(
+      dipakai > 0
+        ? `"${hapusMapel.name}" dihapus. ${dipakai} jadwal masih memakai nama ini.`
+        : `"${hapusMapel.name}" dihapus.`
+    )
+    setHapusMapel(null)
+  }
 
   const byDay = useMemo(() => schedules.filter((s) => s.day === day), [schedules, day])
 
   function openAdd() {
     setEditing(null)
-    setForm({ ...EMPTY, day })
+    setForm({ ...EMPTY, day, subject: daftarMapel[0]?.name ?? '' })
     setOpen(true)
   }
 
@@ -78,11 +116,29 @@ export default function AdminSchedulePage() {
         title="Kelola Jadwal Pelajaran"
         description={`${schedules.length} slot jadwal tersimpan`}
         action={
-          <Button variant="gradient" onClick={openAdd}>
-            <Plus className="h-4 w-4" /> Tambah Jadwal
-          </Button>
+          <>
+            <Button variant="outline" onClick={() => setKelolaMapel(true)}>
+              <BookOpen className="h-4 w-4" /> Mata Pelajaran ({subjects.length})
+            </Button>
+            <Button variant="gradient" onClick={openAdd} disabled={subjects.length === 0}>
+              <Plus className="h-4 w-4" /> Tambah Jadwal
+            </Button>
+          </>
         }
       />
+
+      {subjects.length === 0 && (
+        <div className="flex items-start gap-3 rounded-2xl border border-amber-500/30 bg-amber-500/10 p-4">
+          <BookOpen className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
+          <div className="text-sm">
+            <p className="font-medium text-amber-600 dark:text-amber-400">Belum ada mata pelajaran</p>
+            <p className="mt-0.5 text-muted-foreground">
+              Tambahkan mata pelajaran dulu lewat tombol <strong>Mata Pelajaran</strong> di atas,
+              baru jadwal bisa disusun.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-wrap gap-2">
         {DAYS.map((d) => {
@@ -202,9 +258,9 @@ export default function AdminSchedulePage() {
               <Select value={form.subject} onValueChange={(v) => setForm({ ...form, subject: v })}>
                 <SelectTrigger id="s-subject"><SelectValue /></SelectTrigger>
                 <SelectContent className="max-h-64">
-                  {SUBJECTS.map((x) => <SelectItem key={x} value={x}>{x}</SelectItem>)}
-                  <SelectItem value="Upacara">Upacara</SelectItem>
-                  <SelectItem value="Jumat Bersih">Jumat Bersih</SelectItem>
+                  {daftarMapel.map((x) => (
+                    <SelectItem key={x.id} value={x.name}>{x.name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -223,6 +279,94 @@ export default function AdminSchedulePage() {
               <Button type="submit" variant="gradient">{editing ? 'Simpan' : 'Tambah'}</Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* ---------- KELOLA MATA PELAJARAN ---------- */}
+      <Dialog open={kelolaMapel} onOpenChange={setKelolaMapel}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Mata Pelajaran</DialogTitle>
+            <DialogDescription>
+              Daftar ini yang muncul saat menyusun jadwal. Tambah atau hapus sesuai kebutuhan kelas.
+            </DialogDescription>
+          </DialogHeader>
+
+          <form onSubmit={tambahMapel} className="flex gap-2">
+            <Input
+              value={mapelBaru}
+              onChange={(e) => setMapelBaru(e.target.value)}
+              placeholder="Contoh: Bahasa Jawa"
+              maxLength={60}
+              aria-label="Nama mata pelajaran baru"
+            />
+            <Button type="submit" variant="gradient" className="shrink-0">
+              <Plus className="h-4 w-4" /> Tambah
+            </Button>
+          </form>
+
+          <div className="max-h-72 space-y-1.5 overflow-y-auto pr-1 scrollbar-thin">
+            {daftarMapel.length === 0 && (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                Belum ada mata pelajaran. Tambahkan lewat kolom di atas.
+              </p>
+            )}
+            {daftarMapel.map((m, i) => {
+              const dipakai = schedules.filter((x) => x.subject === m.name).length
+              return (
+                <div
+                  key={m.id}
+                  className="flex items-center gap-2.5 rounded-xl border border-border/60 bg-card/40 p-2.5"
+                >
+                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-lg bg-primary/10 text-xs font-semibold text-primary">
+                    {i + 1}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-sm font-medium">{m.name}</span>
+                  {dipakai > 0 && (
+                    <Badge variant="outline" className="shrink-0 text-[10px]">
+                      {dipakai} jadwal
+                    </Badge>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`Hapus ${m.name}`}
+                    onClick={() => setHapusMapel(m)}
+                    className="shrink-0 text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              )
+            })}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setKelolaMapel(false)}>Tutup</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* ---------- HAPUS MATA PELAJARAN ---------- */}
+      <Dialog open={!!hapusMapel} onOpenChange={(o) => !o && setHapusMapel(null)}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Hapus Mata Pelajaran?</DialogTitle>
+            <DialogDescription>
+              &ldquo;{hapusMapel?.name}&rdquo; akan hilang dari pilihan saat menyusun jadwal.
+              {hapusMapel && schedules.some((x) => x.subject === hapusMapel.name) && (
+                <span className="mt-2 block text-amber-600 dark:text-amber-400">
+                  Jadwal yang sudah memakai mapel ini tidak ikut terhapus.
+                </span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setHapusMapel(null)}>Batal</Button>
+            <Button variant="destructive" onClick={doHapusMapel}>
+              <Trash2 className="h-4 w-4" /> Hapus
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
