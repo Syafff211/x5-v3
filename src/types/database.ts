@@ -79,6 +79,13 @@ export interface Message {
   created_at: string
 }
 
+export interface Subject {
+  id: string
+  name: string
+  order: number
+  created_at: string
+}
+
 export interface Schedule {
   id: string
   day: string
