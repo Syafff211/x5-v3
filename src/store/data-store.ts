@@ -10,24 +10,18 @@ import {
   DEMO_ATTENDANCE,
   DEMO_EVENTS,
   DEMO_GALLERY,
-  DEMO_GRADES,
-  DEMO_MATERIALS,
   DEMO_MESSAGES,
   DEMO_ORGANIZATION,
   DEMO_SCHEDULE,
   DEMO_STUDENTS,
   DEMO_ADMIN_ACCOUNTS,
-  DEMO_SUBMISSIONS,
 } from '@/lib/demo-data'
 import type {
   Announcement,
   Assignment,
-  AssignmentSubmission,
   Attendance,
   CalendarEvent,
   GalleryItem,
-  Grade,
-  Material,
   Message,
   OrganizationMember,
   Profile,
@@ -38,9 +32,6 @@ type Table =
   | 'profiles'
   | 'attendance'
   | 'assignments'
-  | 'assignment_submissions'
-  | 'grades'
-  | 'materials'
   | 'announcements'
   | 'gallery'
   | 'messages'
@@ -52,9 +43,6 @@ interface DataState {
   students: Profile[]
   attendance: Attendance[]
   assignments: Assignment[]
-  submissions: AssignmentSubmission[]
-  grades: Grade[]
-  materials: Material[]
   announcements: Announcement[]
   gallery: GalleryItem[]
   messages: Message[]
@@ -80,9 +68,6 @@ const KEY_MAP: Record<Table, keyof DataState> = {
   profiles: 'students',
   attendance: 'attendance',
   assignments: 'assignments',
-  assignment_submissions: 'submissions',
-  grades: 'grades',
-  materials: 'materials',
   announcements: 'announcements',
   gallery: 'gallery',
   messages: 'messages',
@@ -96,9 +81,6 @@ const INITIAL = {
   students: [...DEMO_STUDENTS, ...DEMO_ADMIN_ACCOUNTS],
   attendance: DEMO_ATTENDANCE,
   assignments: DEMO_ASSIGNMENTS,
-  submissions: DEMO_SUBMISSIONS,
-  grades: DEMO_GRADES,
-  materials: DEMO_MATERIALS,
   announcements: DEMO_ANNOUNCEMENTS,
   gallery: DEMO_GALLERY,
   messages: DEMO_MESSAGES,
@@ -108,15 +90,50 @@ const INITIAL = {
 }
 
 /** Fire-and-forget Supabase write; local state is the source of truth for UI responsiveness. */
-async function syncRemote(op: 'insert' | 'update' | 'delete', table: Table, payload: any, id?: string) {
+async function syncRemote(
+  op: 'insert' | 'update' | 'delete',
+  table: Table,
+  payload: any,
+  id?: string
+): Promise<{ error: string | null }> {
   const supabase = createClient()
-  if (!supabase || table === 'events') return
+  if (!supabase || table === 'events') return { error: null }
+
   try {
-    if (op === 'insert') await supabase.from(table).insert(payload)
-    else if (op === 'update') await supabase.from(table).update(payload).eq('id', id!)
-    else await supabase.from(table).delete().eq('id', id!)
-  } catch {
-    /* offline-tolerant */
+    // Bersihkan payload sebelum dikirim ke Postgres.
+    let bersih = payload
+    if (payload && typeof payload === 'object') {
+      // 1) Kolom hasil join hanya ada di sisi klien — Postgres akan menolaknya.
+      const { profiles, assignments, ...sisa } = payload as Record<string, unknown>
+
+      // 2) Kolom UUID tidak boleh diisi id buatan mode demo (mis. "sadmin-01"),
+      //    karena melanggar foreign key. Kosongkan saja bila bukan UUID.
+      const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      for (const kolom of ['uploaded_by', 'created_by', 'student_id', 'sender_id', 'receiver_id', 'assignment_id', 'user_id']) {
+        const nilai = sisa[kolom]
+        if (typeof nilai === 'string' && !UUID.test(nilai)) sisa[kolom] = null
+      }
+      if (typeof sisa.id === 'string' && !UUID.test(sisa.id)) delete sisa.id
+
+      bersih = sisa
+    }
+
+    const res =
+      op === 'insert'
+        ? await supabase.from(table).insert(bersih)
+        : op === 'update'
+          ? await supabase.from(table).update(bersih).eq('id', id!)
+          : await supabase.from(table).delete().eq('id', id!)
+
+    if (res.error) {
+      console.error(`[sync] ${op} ${table} gagal:`, res.error.message)
+      return { error: res.error.message }
+    }
+    return { error: null }
+  } catch (e) {
+    const pesan = e instanceof Error ? e.message : 'Gagal menghubungi server.'
+    console.error(`[sync] ${op} ${table} gagal:`, pesan)
+    return { error: pesan }
   }
 }
 
@@ -162,9 +179,6 @@ export const useDataStore = create<DataState>()(
           ['profiles', 'students'],
           ['attendance', 'attendance'],
           ['assignments', 'assignments'],
-          ['assignment_submissions', 'submissions'],
-          ['grades', 'grades'],
-          ['materials', 'materials'],
           ['announcements', 'announcements'],
           ['gallery', 'gallery'],
           ['messages', 'messages'],
@@ -185,7 +199,18 @@ export const useDataStore = create<DataState>()(
       add: (table, row) => {
         const key = KEY_MAP[table]
         set((s) => ({ [key]: [row, ...(s[key] as any[])] }) as any)
-        void syncRemote('insert', table, row)
+
+        // Kalau penyimpanan ke server gagal, tarik kembali baris dari tampilan
+        // supaya tidak ada data "hantu" yang terlihat ada padahal tidak tersimpan.
+        void syncRemote('insert', table, row).then(({ error }) => {
+          if (!error) return
+          set((s) => ({ [key]: (s[key] as any[]).filter((r) => r.id !== row.id) }) as any)
+          if (typeof window !== 'undefined') {
+            window.dispatchEvent(
+              new CustomEvent('x5-sync-error', { detail: { table, error } })
+            )
+          }
+        })
       },
 
       update: (table, id, patch) => {
