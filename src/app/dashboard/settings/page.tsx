@@ -15,7 +15,6 @@ import { cn } from '@/lib/utils'
 
 const NOTIFS = [
   { key: 'assignments', label: 'Info PR Baru', desc: 'Pemberitahuan saat guru menambahkan PR.' },
-  { key: 'grades', label: 'Nilai Baru', desc: 'Pemberitahuan saat nilai diinput.' },
   { key: 'announcements', label: 'Pengumuman', desc: 'Pemberitahuan pengumuman kelas.' },
   { key: 'messages', label: 'Pesan Masuk', desc: 'Pemberitahuan chat dari teman sekelas.' },
 ]
@@ -23,7 +22,7 @@ const NOTIFS = [
 export default function SettingsPage() {
   const { theme, setTheme } = useTheme()
   const [mounted, setMounted] = useState(false)
-  const [notifs, setNotifs] = useState<Record<string, boolean>>({ assignments: true, grades: true, announcements: true, messages: false })
+  const [notifs, setNotifs] = useState<Record<string, boolean>>({ assignments: true, announcements: true, messages: false })
   const [pw, setPw] = useState({ current: '', next: '', confirm: '' })
   const [saving, setSaving] = useState(false)
 
