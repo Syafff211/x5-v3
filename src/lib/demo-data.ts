@@ -9,6 +9,7 @@ import type {
   OrganizationMember,
   Profile,
   Schedule,
+  Subject,
 } from '@/types/database'
 
 /**
@@ -28,6 +29,7 @@ import type {
 const iso = (d: Date) => d.toISOString()
 const now = () => iso(new Date())
 
+/** Daftar mapel awal. Admin bisa menambah/menghapus lewat menu Jadwal. */
 export const SUBJECTS = [
   'Matematika',
   'Bahasa Indonesia',
@@ -82,6 +84,13 @@ const ROSTER: { name: string; email: string; nisn: string }[] = [
   { name: 'Zahra Anggraeny', email: 'zahra.anggraeny@x5-sman1.web.id', nisn: '0093145525' },
   { name: 'Zahra Dewi Adha', email: 'zahra.dewi@x5-sman1.web.id', nisn: '0093145538' },
 ]
+
+export const DEMO_SUBJECTS: Subject[] = SUBJECTS.map((name, i) => ({
+  id: `subj-${String(i + 1).padStart(2, '0')}`,
+  name,
+  order: i + 1,
+  created_at: now(),
+}))
 
 export const avatarFor = (seed: string) =>
   `https://api.dicebear.com/9.x/notionists/svg?seed=${encodeURIComponent(seed)}&backgroundColor=6366f1,8b5cf6,d946ef&backgroundType=gradientLinear`
