@@ -69,15 +69,8 @@ function jawab(tanya: string): Pesan {
   if (t.includes('pr') || t.includes('tugas')) {
     return {
       dari: 'bot',
-      teks: 'Semua PR ada di menu Info PR — lengkap dengan mata pelajaran, tenggat, dan status pengumpulan. Berkas bisa diunggah langsung dari sana.',
+      teks: 'Semua PR ada di menu Info PR — lengkap dengan mata pelajaran dan tenggatnya. Pengumpulan dilakukan langsung ke guru sesuai arahan masing-masing.',
       aksi: [{ label: 'Buka Info PR', href: '/dashboard/assignments' }],
-    }
-  }
-  if (t.includes('nilai') || t.includes('rapor') || t.includes('uts') || t.includes('uas')) {
-    return {
-      dari: 'bot',
-      teks: 'Menu Nilai memuat nilai harian, UTS, dan UAS beserta rata-rata per mata pelajaran. Warnanya menandakan capaian: hijau bagus, kuning cukup, merah perlu perbaikan.',
-      aksi: [{ label: 'Buka Nilai', href: '/dashboard/grades' }],
     }
   }
   if (t.includes('jadwal')) {
@@ -106,7 +99,7 @@ function jawab(tanya: string): Pesan {
 
   return {
     dari: 'bot',
-    teks: 'Maaf, aku belum paham maksudnya. Coba tanyakan soal login, kehadiran, Info PR, nilai, jadwal, galeri, atau pengurus kelas.',
+    teks: 'Maaf, aku belum paham maksudnya. Coba tanyakan soal login, kehadiran, Info PR, jadwal, galeri, atau pengurus kelas.',
     aksi: [{ label: 'Login Siswa', href: '/auth/login' }],
   }
 }
@@ -118,7 +111,6 @@ function tautanTerkait(tanya: string): Pesan['aksi'] {
   if (t.includes('login') || t.includes('masuk') || t.includes('akun')) return [{ label: 'Login Siswa', href: '/auth/login' }]
   if (t.includes('hadir') || t.includes('absen')) return [{ label: 'Buka Kehadiran', href: '/dashboard/attendance' }]
   if (t.includes('pr') || t.includes('tugas')) return [{ label: 'Buka Info PR', href: '/dashboard/assignments' }]
-  if (t.includes('nilai')) return [{ label: 'Buka Nilai', href: '/dashboard/grades' }]
   if (t.includes('jadwal')) return [{ label: 'Lihat Jadwal', href: '/dashboard/schedule' }]
   return undefined
 }
@@ -176,14 +168,12 @@ export function FloatingAssistant() {
         return
       }
 
-      // 429 = kena batas; tampilkan pesannya apa adanya.
       if (res.status === 429 && data?.error) {
         setMengetik(false)
         setPesan((p) => [...p, { dari: 'bot', teks: data.error }])
         return
       }
 
-      // Selain itu: pakai jawaban lokal supaya asisten tetap berguna.
       setMengetik(false)
       setPesan((p) => [...p, jawab(bersih)])
     } catch {
