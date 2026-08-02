@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { motion } from 'framer-motion'
 import { toast } from 'sonner'
 import { Camera, Loader2, Mail, MapPin, Pencil, Phone, Save, UserCircle, Users, X } from 'lucide-react'
@@ -13,16 +13,19 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useAuthStore } from '@/store/auth-store'
+import { unggahGambar } from '@/lib/upload'
 import { useDataStore } from '@/store/data-store'
-import { average, initials, sanitizeText } from '@/lib/utils'
+import { initials, sanitizeText } from '@/lib/utils'
 
 export default function ProfilePage() {
   const profile = useAuthStore((s) => s.profile)
   const updateProfile = useAuthStore((s) => s.updateProfile)
-  const { attendance, grades, submissions } = useDataStore()
+  const { attendance } = useDataStore()
 
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [unggahAvatar, setUnggahAvatar] = useState(false)
+  const avatarRef = useRef<HTMLInputElement>(null)
   const [form, setForm] = useState({ full_name: '', phone: '', address: '', parent_name: '' })
 
   useEffect(() => {
@@ -40,8 +43,20 @@ export default function ProfilePage() {
   const rate = myAttendance.length
     ? Math.round((myAttendance.filter((a) => a.status === 'present').length / myAttendance.length) * 100)
     : 0
-  const avg = average(grades.filter((g) => g.student_id === profile?.id).map((g) => g.score))
-  const subCount = submissions.filter((s) => s.student_id === profile?.id).length
+
+  async function gantiAvatar(file: File | null | undefined) {
+    if (!file || !profile) return
+    setUnggahAvatar(true)
+    const { url, error } = await unggahGambar(file, 'avatars', profile.id)
+    if (error || !url) {
+      setUnggahAvatar(false)
+      return toast.error(error ?? 'Gagal mengunggah foto.')
+    }
+    const { error: errSimpan } = await updateProfile({ avatar_url: url })
+    setUnggahAvatar(false)
+    if (errSimpan) return toast.error(errSimpan)
+    toast.success('Foto profil diperbarui.')
+  }
 
   async function save(e: React.FormEvent) {
     e.preventDefault()
@@ -92,12 +107,23 @@ export default function ProfilePage() {
                   {profile.avatar_url && <AvatarImage src={profile.avatar_url} alt={profile.full_name} />}
                   <AvatarFallback className="text-2xl">{initials(profile.full_name)}</AvatarFallback>
                 </Avatar>
+                <input
+                  ref={avatarRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/webp,image/gif"
+                  className="sr-only"
+                  onChange={(e) => {
+                    gantiAvatar(e.target.files?.[0])
+                    e.target.value = ''
+                  }}
+                />
                 <button
-                  onClick={() => toast.info('Unggah foto tersedia setelah Supabase Storage aktif.')}
+                  onClick={() => avatarRef.current?.click()}
+                  disabled={unggahAvatar}
                   aria-label="Ganti foto profil"
-                  className="absolute bottom-0 right-0 grid h-8 w-8 place-items-center rounded-full border-2 border-background bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-110"
+                  className="absolute bottom-0 right-0 grid h-8 w-8 place-items-center rounded-full border-2 border-background bg-primary text-primary-foreground shadow-lg transition-transform hover:scale-110 disabled:opacity-70"
                 >
-                  <Camera className="h-3.5 w-3.5" />
+                  {unggahAvatar ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Camera className="h-3.5 w-3.5" />}
                 </button>
               </div>
               <h2 className="mt-3 text-lg font-bold">{profile.full_name}</h2>
@@ -107,8 +133,6 @@ export default function ProfilePage() {
               <div className="mt-5 grid grid-cols-3 gap-2 border-t border-border/60 pt-4">
                 {[
                   ['Kehadiran', `${rate}%`],
-                  ['Rata-rata', `${avg}`],
-                  ['PR', `${subCount}`],
                 ].map(([label, value]) => (
                   <div key={label}>
                     <p className="text-lg font-bold">{value}</p>
