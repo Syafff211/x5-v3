@@ -22,15 +22,16 @@ import { Textarea } from '@/components/ui/textarea'
 import { EmptyState } from '@/components/shared/empty-state'
 import { useAuthStore } from '@/store/auth-store'
 import { nowIso, uid, useDataStore } from '@/store/data-store'
-import { SUBJECTS } from '@/lib/demo-data'
+
 import { deadlineInfo, formatDateTime, sanitizeText } from '@/lib/utils'
 import type { Assignment } from '@/types/database'
 
-const EMPTY = { title: '', subject: SUBJECTS[0], description: '', deadline: '' }
+const EMPTY = { title: '', subject: '', description: '', deadline: '' }
 
 export default function AdminAssignmentsPage() {
   const profile = useAuthStore((s) => s.profile)
   const assignments = useDataStore((s) => s.assignments)
+  const subjects = useDataStore((s) => s.subjects)
   const add = useDataStore((s) => s.add)
   const update = useDataStore((s) => s.update)
   const remove = useDataStore((s) => s.remove)
@@ -45,6 +46,8 @@ export default function AdminAssignmentsPage() {
     [assignments]
   )
 
+  const daftarMapel = useMemo(() => [...subjects].sort((a, b) => a.order - b.order), [subjects])
+
   const aktif = useMemo(
     () => assignments.filter((a) => new Date(a.deadline).getTime() >= Date.now()).length,
     [assignments]
@@ -55,7 +58,7 @@ export default function AdminAssignmentsPage() {
     const d = new Date()
     d.setDate(d.getDate() + 7)
     d.setHours(23, 59, 0, 0)
-    setForm({ ...EMPTY, deadline: toLocalInput(d) })
+    setForm({ ...EMPTY, subject: daftarMapel[0]?.name ?? '', deadline: toLocalInput(d) })
     setOpen(true)
   }
 
@@ -198,7 +201,9 @@ export default function AdminAssignmentsPage() {
                 <Select value={form.subject} onValueChange={(v) => setForm({ ...form, subject: v })}>
                   <SelectTrigger id="t-subject"><SelectValue /></SelectTrigger>
                   <SelectContent className="max-h-64">
-                    {SUBJECTS.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                    {daftarMapel.map((s) => (
+                      <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
