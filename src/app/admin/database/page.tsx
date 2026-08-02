@@ -18,8 +18,6 @@ const TABLES = [
   { key: 'students', label: 'profiles', desc: 'Data siswa & admin' },
   { key: 'attendance', label: 'attendance', desc: 'Catatan kehadiran' },
   { key: 'assignments', label: 'assignments', desc: 'Daftar tugas' },
-  { key: 'submissions', label: 'assignment_submissions', desc: 'Pengumpulan tugas' },
-  { key: 'grades', label: 'grades', desc: 'Nilai siswa' },
   { key: 'announcements', label: 'announcements', desc: 'Pengumuman kelas' },
   { key: 'gallery', label: 'gallery', desc: 'Media galeri' },
   { key: 'messages', label: 'messages', desc: 'Pesan chat' },
