@@ -16,6 +16,7 @@ const JS_DAYS = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu']
 
 export default function SchedulePage() {
   const schedules = useDataStore((s) => s.schedules)
+  const subjects = useDataStore((s) => s.subjects)
   const todayName = JS_DAYS[new Date().getDay()]
   const [day, setDay] = useState(DAYS.includes(todayName) ? todayName : 'Senin')
 
@@ -23,7 +24,10 @@ export default function SchedulePage() {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Jadwal Pelajaran" description="Jadwal mingguan kelas X-5 semester ini." />
+      <PageHeader
+        title="Jadwal Pelajaran"
+        description={`${schedules.length} jam pelajaran · ${subjects.length} mata pelajaran`}
+      />
 
       <div className="flex flex-wrap gap-2">
         {DAYS.map((d) => (
