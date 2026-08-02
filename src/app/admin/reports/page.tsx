@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react'
 import { toast } from 'sonner'
-import { CalendarCheck, ClipboardList, Download, FileBarChart, FileText, GraduationCap, Users } from 'lucide-react'
+import { CalendarCheck, ClipboardList, Download, FileBarChart, FileText, Users } from 'lucide-react'
 import { PageHeader } from '@/components/shared/page-header'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -11,19 +11,18 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useDataStore } from '@/store/data-store'
 import { exportToExcel, exportToPdf } from '@/lib/export'
-import { ATTENDANCE_LABEL, GRADE_TYPE_LABEL, average, cn, formatDate, formatDateTime } from '@/lib/utils'
+import { cn, formatDate, formatDateTime } from '@/lib/utils'
 
-type ReportKey = 'attendance' | 'grades' | 'assignments' | 'students'
+type ReportKey = 'attendance' | 'assignments' | 'students'
 
 const REPORTS: { key: ReportKey; title: string; desc: string; icon: typeof Users; accent: string }[] = [
   { key: 'attendance', title: 'Laporan Kehadiran', desc: 'Rekap kehadiran seluruh siswa per periode.', icon: CalendarCheck, accent: 'from-emerald-500 to-teal-500' },
-  { key: 'grades', title: 'Laporan Nilai', desc: 'Rekap nilai dan peringkat kelas.', icon: GraduationCap, accent: 'from-fuchsia-500 to-pink-500' },
-  { key: 'assignments', title: 'Laporan Tugas', desc: 'Status pengumpulan tugas per siswa.', icon: ClipboardList, accent: 'from-indigo-500 to-violet-500' },
+  { key: 'assignments', title: 'Laporan Info PR', desc: 'Daftar PR beserta tenggat dan statusnya.', icon: ClipboardList, accent: 'from-indigo-500 to-violet-500' },
   { key: 'students', title: 'Data Siswa', desc: 'Daftar lengkap data induk siswa.', icon: Users, accent: 'from-sky-500 to-blue-500' },
 ]
 
 export default function AdminReportsPage() {
-  const { students, attendance, grades, assignments, submissions } = useDataStore()
+  const { students, attendance, assignments } = useDataStore()
   const [selected, setSelected] = useState<ReportKey>('attendance')
   const [from, setFrom] = useState(() => {
     const d = new Date()
@@ -51,41 +50,23 @@ export default function AdminReportsPage() {
       return { headers, rows, title: 'Laporan Kehadiran Kelas X-5', subtitle: `Periode ${formatDate(from)} — ${formatDate(to)}` }
     }
 
-    if (selected === 'grades') {
-      const headers = ['Peringkat', 'Nama', 'NISN', 'Harian', 'UTS', 'UAS', 'Rata-rata']
-      const rows = studentList
-        .map((s) => {
-          const g = grades.filter((x) => x.student_id === s.id)
-          const byType = (t: string) => average(g.filter((x) => x.type === t).map((x) => x.score))
-          return { s, daily: byType('daily'), mid: byType('midterm'), fin: byType('final'), avg: average(g.map((x) => x.score)) }
-        })
-        .sort((a, b) => b.avg - a.avg)
-        .map((r, i) => [i + 1, r.s.full_name, r.s.nisn ?? '', r.daily, r.mid, r.fin, r.avg])
-      return { headers, rows, title: 'Laporan Nilai Kelas X-5', subtitle: `Rata-rata kelas: ${average(grades.map((g) => g.score))}` }
-    }
 
     if (selected === 'assignments') {
-      const headers = ['No', 'Judul Tugas', 'Mapel', 'Deadline', 'Terkumpul', 'Dinilai', 'Rata-rata Nilai']
-      const rows = assignments.map((a, i) => {
-        const subs = submissions.filter((s) => s.assignment_id === a.id)
-        const scored = subs.filter((s) => s.score != null)
-        return [
-          i + 1,
-          a.title,
-          a.subject,
-          formatDateTime(a.deadline),
-          `${subs.length}/${studentList.length}`,
-          scored.length,
-          scored.length ? average(scored.map((s) => s.score!)) : '—',
-        ]
-      })
-      return { headers, rows, title: 'Laporan Tugas Kelas X-5', subtitle: `${assignments.length} tugas · ${submissions.length} pengumpulan` }
+      const headers = ['No', 'Judul PR', 'Mapel', 'Tenggat', 'Status']
+      const rows = assignments.map((a, i) => [
+        i + 1,
+        a.title,
+        a.subject,
+        formatDateTime(a.deadline),
+        new Date(a.deadline).getTime() >= Date.now() ? 'Aktif' : 'Lewat',
+      ])
+      return { headers, rows, title: 'Laporan Info PR Kelas X-5', subtitle: `${assignments.length} PR tercatat` }
     }
 
     const headers = ['No', 'Nama Lengkap', 'NISN', 'Email', 'No. HP', 'Orang Tua', 'Alamat']
     const rows = studentList.map((s, i) => [i + 1, s.full_name, s.nisn ?? '', s.email, s.phone ?? '', s.parent_name ?? '', s.address ?? ''])
     return { headers, rows, title: 'Data Induk Siswa Kelas X-5', subtitle: `${studentList.length} siswa terdaftar` }
-  }, [selected, studentList, attendance, grades, assignments, submissions, from, to])
+  }, [selected, studentList, attendance, assignments, from, to])
 
   function toExcel() {
     const objs = built.rows.map((r) => Object.fromEntries(built.headers.map((h, i) => [h, r[i]])))
