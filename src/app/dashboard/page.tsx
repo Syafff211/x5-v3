@@ -7,8 +7,8 @@ import {
   CalendarDays,
   CalendarCheck,
   ClipboardList,
-  GraduationCap,
   Megaphone,
+  Users,
   MessageSquare,
   Pin,
   Sparkles,
@@ -31,35 +31,16 @@ const QUICK_LINKS = [
 
 export default function DashboardPage() {
   const profile = useAuthStore((s) => s.profile)
-  const { attendance, assignments, grades, announcements, submissions, students } = useDataStore()
+  const { attendance, assignments, announcements, students } = useDataStore()
 
   const myAttendance = attendance.filter((a) => a.student_id === profile?.id)
   const presentCount = myAttendance.filter((a) => a.status === 'present').length
   const attendanceRate = myAttendance.length ? Math.round((presentCount / myAttendance.length) * 100) : 0
 
-  const activeAssignments = assignments.filter((a) => new Date(a.deadline).getTime() > Date.now())
-  const submittedIds = new Set(submissions.filter((s) => s.student_id === profile?.id).map((s) => s.assignment_id))
-  const pending = activeAssignments.filter((a) => !submittedIds.has(a.id))
-
-  const myGrades = grades.filter((g) => g.student_id === profile?.id)
-  const avgScore = average(myGrades.map((g) => g.score))
-
-  // Peringkat dihitung nyata dari rata-rata nilai seluruh siswa.
   const totalStudents = students.filter((s) => s.role === 'student').length
-  const rank = (() => {
-    if (!myGrades.length) return null
-    const avgByStudent = new Map<string, number[]>()
-    grades.forEach((g) => {
-      const arr = avgByStudent.get(g.student_id) ?? []
-      arr.push(g.score)
-      avgByStudent.set(g.student_id, arr)
-    })
-    const ranked = Array.from(avgByStudent.entries())
-      .map(([id, list]) => ({ id, avg: list.reduce((x: number, y: number) => x + y, 0) / list.length }))
-      .sort((a, b) => b.avg - a.avg)
-    const idx = ranked.findIndex((r) => r.id === profile?.id)
-    return idx >= 0 ? idx + 1 : null
-  })()
+  const activeAssignments = assignments.filter((a) => new Date(a.deadline).getTime() > Date.now())
+
+
 
   const pinned = announcements.filter((a) => a.is_pinned).slice(0, 2)
   const upcoming = [...activeAssignments].sort((a, b) => +new Date(a.deadline) - +new Date(b.deadline)).slice(0, 4)
@@ -88,9 +69,9 @@ export default function DashboardPage() {
             {greeting}, {firstName}! 👋
           </h1>
           <p className="mt-2 max-w-xl text-sm text-white/85 sm:text-base">
-            {pending.length > 0
-              ? `Kamu punya ${pending.length} PR yang belum dikumpulkan. Yuk kerjakan sekarang!`
-              : 'Semua PR sudah dikumpulkan. Kerja bagus, pertahankan ya!'}
+            {activeAssignments.length > 0
+              ? `Ada ${activeAssignments.length} PR yang masih aktif. Cek tenggatnya ya!`
+              : 'Tidak ada PR aktif saat ini. Nikmati waktu luangmu!'}
           </p>
           <div className="mt-5 flex flex-wrap gap-2">
             <Button asChild size="sm" className="bg-white text-indigo-600 hover:bg-white/90">
@@ -110,17 +91,9 @@ export default function DashboardPage() {
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <StatCard label="Kehadiran" value={attendanceRate} suffix="%" icon={CalendarCheck} accent="emerald" trend={`${presentCount} dari ${myAttendance.length} hari`} delay={0} />
-        <StatCard label="PR Aktif" value={activeAssignments.length} icon={ClipboardList} accent="indigo" trend={`${pending.length} belum dikumpulkan`} delay={0.05} />
-        <StatCard label="Rata-rata Nilai" value={avgScore} icon={GraduationCap} accent="fuchsia" trend={`${myGrades.length} nilai tercatat`} delay={0.1} />
-        <StatCard
-          label="Peringkat Kelas"
-          value={rank ?? '—'}
-          icon={TrendingUp}
-          accent="amber"
-          animate={rank != null}
-          trend={rank != null ? `dari ${totalStudents} siswa` : 'belum ada nilai'}
-          delay={0.15}
-        />
+        <StatCard label="PR Aktif" value={activeAssignments.length} icon={ClipboardList} accent="indigo" trend="perlu dikerjakan" delay={0.05} />
+        <StatCard label="Pengumuman" value={announcements.length} icon={Megaphone} accent="amber" trend="dari wali kelas" delay={0.1} />
+        <StatCard label="Teman Sekelas" value={totalStudents} icon={Users} accent="fuchsia" trend="siswa X-5" delay={0.15} />
       </div>
 
       {/* Quick menu */}
@@ -157,7 +130,6 @@ export default function DashboardPage() {
             {upcoming.length === 0 && <p className="py-6 text-center text-sm text-muted-foreground">Tidak ada PR aktif. 🎉</p>}
             {upcoming.map((a) => {
               const info = deadlineInfo(a.deadline)
-              const done = submittedIds.has(a.id)
               return (
                 <Link
                   key={a.id}
@@ -174,10 +146,10 @@ export default function DashboardPage() {
                     </p>
                   </div>
                   <Badge
-                    variant={done ? 'success' : info.tone === 'urgent' || info.tone === 'overdue' ? 'destructive' : info.tone === 'soon' ? 'warning' : 'outline'}
+                    variant={info.tone === 'urgent' || info.tone === 'overdue' ? 'destructive' : info.tone === 'soon' ? 'warning' : 'outline'}
                     className="shrink-0"
                   >
-                    {done ? 'Selesai' : info.label}
+                    {info.label}
                   </Badge>
                 </Link>
               )
