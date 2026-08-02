@@ -27,14 +27,22 @@ export function OrganizationSection() {
       [...organization]
         .sort((a, b) => a.order - b.order)
         .map((o) => {
-          const siswa = students.find((s) => s.id === o.student_id)
+          // Tiga sumber nama, dicoba berurutan:
+          //   1. hasil join dari server (paling andal),
+          //   2. pencocokan manual ke daftar siswa,
+          //   3. baru menyerah.
+          const siswa = o.student_id
+            ? students.find((s) => s.id === o.student_id)
+            : undefined
           return {
             id: o.id,
             position: o.position,
-            nama: o.profiles?.full_name ?? siswa?.full_name ?? 'Belum ditentukan',
+            nama: o.profiles?.full_name ?? siswa?.full_name ?? null,
             avatar: o.profiles?.avatar_url ?? siswa?.avatar_url ?? null,
           }
-        }),
+        })
+        // Jabatan yang siswanya belum diisi tidak perlu dipajang ke pengunjung.
+        .filter((p) => !!p.nama) as { id: string; position: string; nama: string; avatar: string | null }[],
     [organization, students]
   )
 
