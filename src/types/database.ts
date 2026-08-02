@@ -1,6 +1,5 @@
 export type Role = 'student' | 'admin' | 'super_admin'
 export type AttendanceStatus = 'present' | 'late' | 'permission' | 'sick' | 'absent'
-export type GradeType = 'daily' | 'midterm' | 'final'
 export type MediaType = 'image' | 'video'
 
 export interface Profile {
@@ -38,30 +37,6 @@ export interface Assignment {
   created_by: string | null
   created_at: string
   updated_at: string
-}
-
-export interface AssignmentSubmission {
-  id: string
-  assignment_id: string
-  student_id: string
-  file_url: string | null
-  description: string | null
-  submitted_at: string
-  score: number | null
-  feedback: string | null
-  profiles?: Pick<Profile, 'id' | 'full_name' | 'nisn' | 'avatar_url'> | null
-  assignments?: Pick<Assignment, 'id' | 'title' | 'subject' | 'deadline'> | null
-}
-
-export interface Grade {
-  id: string
-  student_id: string
-  subject: string
-  type: GradeType
-  score: number
-  date: string
-  created_at: string
-  profiles?: Pick<Profile, 'id' | 'full_name' | 'nisn'> | null
 }
 
 export interface Material {
