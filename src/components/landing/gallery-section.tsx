@@ -3,17 +3,21 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import Image from 'next/image'
 import { AnimatePresence, motion } from 'framer-motion'
-import { ChevronLeft, ChevronRight, Images, X, ZoomIn } from 'lucide-react'
+import { ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Images, X, ZoomIn } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useDataStore } from '@/store/data-store'
 import { isSupabaseConfigured } from '@/lib/supabase/config'
 import { cn, formatDate } from '@/lib/utils'
 
+/** Jumlah foto yang tampil sebelum pengunjung menekan "Lihat semua". */
+const TAMPIL_AWAL = 6
+
 export function GallerySection() {
   const gallery = useDataStore((s) => s.gallery)
   const publicHydrated = useDataStore((s) => s.publicHydrated)
   const [index, setIndex] = useState<number | null>(null)
+  const [semua, setSemua] = useState(false)
 
   // Saat Supabase aktif, tunggu data server sebelum menampilkan apa pun.
   // Tanpa ini, foto contoh sempat berkedip lalu tertimpa foto asli.
@@ -21,9 +25,9 @@ export function GallerySection() {
 
   // Galeri selalu berasal dari data asli. Tidak ada foto contoh —
   // kalau kosong, tampilkan pesan kosong yang jujur.
-  const items = useMemo(
+  const semuaFoto = useMemo(
     () =>
-      gallery.slice(0, 6).map((g) => ({
+      gallery.map((g) => ({
         id: g.id,
         title: g.title,
         category: g.category,
@@ -33,9 +37,26 @@ export function GallerySection() {
     [gallery]
   )
 
+  const adaSisa = semuaFoto.length > TAMPIL_AWAL
+
+  // Yang benar-benar dirender di grid.
+  const items = useMemo(
+    () => (semua ? semuaFoto : semuaFoto.slice(0, TAMPIL_AWAL)),
+    [semua, semuaFoto]
+  )
+
+  // Lightbox selalu menelusuri SELURUH galeri, bukan cuma yang tampil.
+  // Jadi dari foto ke-6 pengunjung bisa terus menekan panah kanan
+  // tanpa harus menutup dan menekan "Lihat semua" dulu.
   const tutup = useCallback(() => setIndex(null), [])
-  const prev = useCallback(() => setIndex((i) => (i === null ? null : (i - 1 + items.length) % items.length)), [items.length])
-  const next = useCallback(() => setIndex((i) => (i === null ? null : (i + 1) % items.length)), [items.length])
+  const prev = useCallback(
+    () => setIndex((i) => (i === null ? null : (i - 1 + semuaFoto.length) % semuaFoto.length)),
+    [semuaFoto.length]
+  )
+  const next = useCallback(
+    () => setIndex((i) => (i === null ? null : (i + 1) % semuaFoto.length)),
+    [semuaFoto.length]
+  )
 
   useEffect(() => {
     if (index === null) return
@@ -52,7 +73,7 @@ export function GallerySection() {
     }
   }, [index, tutup, prev, next])
 
-  const aktif = index !== null ? items[index] : null
+  const aktif = index !== null ? semuaFoto[index] : null
 
   return (
     <section id="galeri" className="relative px-4 py-24">
@@ -73,6 +94,11 @@ export function GallerySection() {
           <p className="mt-4 text-muted-foreground">
             Dari diskusi di kelas sampai kegiatan di luar sekolah — setiap cerita punya tempatnya di sini.
           </p>
+          {!menunggu && semuaFoto.length > 0 && (
+            <p className="mt-3 text-xs text-muted-foreground/80">
+              {semuaFoto.length} foto tersimpan
+            </p>
+          )}
         </motion.div>
 
         {menunggu ? (
@@ -81,7 +107,7 @@ export function GallerySection() {
               <div key={i} className="aspect-[4/3] animate-pulse rounded-2xl bg-muted" />
             ))}
           </div>
-        ) : items.length === 0 ? (
+        ) : semuaFoto.length === 0 ? (
           <p className="rounded-2xl border border-dashed border-border py-14 text-center text-sm text-muted-foreground">
             Belum ada foto di galeri.
           </p>
@@ -123,6 +149,45 @@ export function GallerySection() {
           ))}
         </div>
         )}
+
+        {/* Lihat semua / Tampilkan lebih sedikit */}
+        {!menunggu && adaSisa && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            className="mt-8 flex justify-center"
+          >
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => {
+                // Saat menutup, kembalikan pandangan ke awal galeri supaya
+                // pengunjung tidak tiba-tiba terlempar ke bagian bawah halaman.
+                if (semua) {
+                  document.getElementById('galeri')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }
+                setSemua((v) => !v)
+              }}
+              className="gap-2 rounded-full px-6"
+            >
+              {semua ? (
+                <>
+                  <ChevronUp className="h-4 w-4" />
+                  Tampilkan lebih sedikit
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="h-4 w-4" />
+                  Lihat semua foto
+                  <span className="ml-0.5 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary">
+                    +{semuaFoto.length - TAMPIL_AWAL}
+                  </span>
+                </>
+              )}
+            </Button>
+          </motion.div>
+        )}
       </div>
 
       {/* Lightbox */}
@@ -148,7 +213,7 @@ export function GallerySection() {
               <X className="h-5 w-5" />
             </Button>
 
-            {items.length > 1 && (
+            {semuaFoto.length > 1 && (
               <>
                 <Button
                   variant="ghost"
@@ -188,7 +253,7 @@ export function GallerySection() {
                   <Badge variant="outline" className="border-white/30 text-white">{aktif.category}</Badge>
                   {aktif.created_at && <span>{formatDate(aktif.created_at)}</span>}
                   <span>·</span>
-                  <span>{(index ?? 0) + 1} / {items.length}</span>
+                  <span>{(index ?? 0) + 1} / {semuaFoto.length}</span>
                 </div>
               </div>
             </motion.div>
