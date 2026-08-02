@@ -117,7 +117,18 @@ async function syncRemote(
       const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
       for (const kolom of ['uploaded_by', 'created_by', 'student_id', 'sender_id', 'receiver_id', 'assignment_id', 'user_id']) {
         const nilai = sisa[kolom]
-        if (typeof nilai === 'string' && !UUID.test(nilai)) sisa[kolom] = null
+        if (typeof nilai === 'string' && !UUID.test(nilai)) {
+          // Pengurus TANPA student_id = kartu "Belum ditentukan" di landing.
+          // Lebih baik gagal terang-terangan daripada tersimpan setengah jadi.
+          if (table === 'organization' && kolom === 'student_id') {
+            return {
+              error:
+                'Siswa yang dipilih belum punya akun di database. Buka Kelola Siswa, ' +
+                'pastikan siswa tersebut sudah tersimpan, lalu ulangi.',
+            }
+          }
+          sisa[kolom] = null
+        }
       }
       if (typeof sisa.id === 'string' && !UUID.test(sisa.id)) delete sisa.id
 
@@ -143,6 +154,36 @@ async function syncRemote(
   }
 }
 
+/**
+ * Ambil pengurus kelas BESERTA nama & foto siswanya lewat join.
+ *
+ * Tabel `organization` hanya menyimpan `student_id`. Kalau landing page harus
+ * mencocokkan sendiri ke daftar `students`, nama pengurus ikut hilang begitu
+ * pengambilan profil gagal/terlambat — muncullah "Belum ditentukan".
+ * Dengan join, nama sudah menempel di barisnya sendiri.
+ *
+ * Bila join ditolak (relasi FK belum terbaca PostgREST), jatuh ke select biasa.
+ */
+async function ambilOrganisasi(supabase: NonNullable<ReturnType<typeof createClient>>) {
+  const join = await supabase
+    .from('organization')
+    .select('id,position,student_id,order,profiles:student_id(id,full_name,avatar_url,nisn)')
+    .order('order', { ascending: true })
+
+  if (!join.error) {
+    // PostgREST mengembalikan objek untuk relasi to-one, tetapi sebagian versi
+    // membungkusnya dalam array. Normalkan agar tipe di klien selalu sama.
+    const data = (join.data ?? []).map((row: any) => ({
+      ...row,
+      profiles: Array.isArray(row.profiles) ? (row.profiles[0] ?? null) : (row.profiles ?? null),
+    }))
+    return { data, error: null }
+  }
+
+  console.warn('[hydratePublic] join organization gagal, pakai select biasa:', join.error.message)
+  return supabase.from('organization').select('*').order('order', { ascending: true })
+}
+
 export const useDataStore = create<DataState>()(
   persist(
     (set) => ({
@@ -156,9 +197,12 @@ export const useDataStore = create<DataState>()(
           set({ publicHydrated: true } as any)
           return
         }
-        const [gal, org, prof, subj] = await Promise.all([
+        // PERHATIAN: urutan variabel di kiri WAJIB sama persis dengan urutan
+        // query di dalam Promise.all. Pernah tertukar (subjects masuk ke slot
+        // profiles) sehingga nama pengurus di landing jadi "Belum ditentukan".
+        const [gal, org, subj, prof] = await Promise.all([
           supabase.from('gallery').select('*').order('created_at', { ascending: false }),
-          supabase.from('organization').select('*').order('order', { ascending: true }),
+          ambilOrganisasi(supabase),
           supabase.from('subjects').select('*').order('order', { ascending: true }),
           supabase.from('profiles').select('id,full_name,avatar_url,nisn,role,email,user_id,created_at,updated_at'),
         ])
