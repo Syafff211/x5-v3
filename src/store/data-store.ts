@@ -13,6 +13,7 @@ import {
   DEMO_MESSAGES,
   DEMO_ORGANIZATION,
   DEMO_SCHEDULE,
+  DEMO_SUBJECTS,
   DEMO_STUDENTS,
   DEMO_ADMIN_ACCOUNTS,
 } from '@/lib/demo-data'
@@ -26,6 +27,7 @@ import type {
   OrganizationMember,
   Profile,
   Schedule,
+  Subject,
 } from '@/types/database'
 
 type Table =
@@ -36,6 +38,7 @@ type Table =
   | 'gallery'
   | 'messages'
   | 'schedules'
+  | 'subjects'
   | 'organization'
   | 'events'
 
@@ -47,6 +50,7 @@ interface DataState {
   gallery: GalleryItem[]
   messages: Message[]
   schedules: Schedule[]
+  subjects: Subject[]
   organization: OrganizationMember[]
   events: CalendarEvent[]
 
@@ -72,6 +76,7 @@ const KEY_MAP: Record<Table, keyof DataState> = {
   gallery: 'gallery',
   messages: 'messages',
   schedules: 'schedules',
+  subjects: 'subjects',
   organization: 'organization',
   events: 'events',
 }
@@ -85,6 +90,7 @@ const INITIAL = {
   gallery: DEMO_GALLERY,
   messages: DEMO_MESSAGES,
   schedules: DEMO_SCHEDULE,
+  subjects: DEMO_SUBJECTS,
   organization: DEMO_ORGANIZATION,
   events: DEMO_EVENTS,
 }
@@ -150,9 +156,10 @@ export const useDataStore = create<DataState>()(
           set({ publicHydrated: true } as any)
           return
         }
-        const [gal, org, prof] = await Promise.all([
+        const [gal, org, prof, subj] = await Promise.all([
           supabase.from('gallery').select('*').order('created_at', { ascending: false }),
           supabase.from('organization').select('*').order('order', { ascending: true }),
+          supabase.from('subjects').select('*').order('order', { ascending: true }),
           supabase.from('profiles').select('id,full_name,avatar_url,nisn,role,email,user_id,created_at,updated_at'),
         ])
 
@@ -164,6 +171,7 @@ export const useDataStore = create<DataState>()(
         if (!gal.error && Array.isArray(gal.data)) patch.gallery = gal.data
         if (!org.error && Array.isArray(org.data)) patch.organization = org.data
         if (!prof.error && Array.isArray(prof.data) && prof.data.length) patch.students = prof.data
+        if (!subj.error && Array.isArray(subj.data) && subj.data.length) patch.subjects = subj.data
 
         patch.publicHydrated = true
         set(patch as any)
@@ -183,6 +191,7 @@ export const useDataStore = create<DataState>()(
           ['gallery', 'gallery'],
           ['messages', 'messages'],
           ['schedules', 'schedules'],
+          ['subjects', 'subjects'],
           ['organization', 'organization'],
           ['events', 'events'],
         ]
